@@ -1,6 +1,12 @@
 const json = require('body-parser');
 const express = require('express');
 const db = require('../utils/db.js');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const dotenv = require('dotenv');
+
+//Configure dotenv files above using any other library and files
+dotenv.config({path:'./utils/config.env'}); 
 
 var router = express.Router();
 
@@ -10,7 +16,19 @@ const genericError = "Sorry, something went wrong!"
 // URL -> localhost:3000/tasks/getUserTasks
 router.get("/getUserTasks", (req, res) => {
     try {
-        var userId = req.body.userId;
+        if (!req.body.authorizationToken || !req.body.authorizationToken.startsWith('Bearer') || !req.body.authorizationToken.split(' ')[2]) {
+            return res.status(422).json({
+                message: "Please provide the token",
+            });
+        }
+
+        const theToken = req.body.authorizationToken.split(' ')[2];
+        const userId = req.body.authorizationToken.split(' ')[1];
+        jwt.verify(theToken, process.env.JwtTokenSecretKey, (err) => {
+            if(err){
+                throw("Invalid JWT token " + err)
+            }
+        });
 
         var sql = `SELECT * FROM nodedb.tasks WHERE userId = "${userId}"`;
 
@@ -24,11 +42,11 @@ router.get("/getUserTasks", (req, res) => {
             res.send(doc);
         });
     }
-    catch
+    catch(err)
     {
-        response.status(500).send({
+        res.status(500).send({
             success: false,
-            error: genericError,
+            error: JSON.stringify(err, undefined, 2)
         })
     }
 });
@@ -37,10 +55,22 @@ router.get("/getUserTasks", (req, res) => {
 // URL -> localhost:3000/tasks/createTask
 router.post('/createTask', (req, res) => {
     try {
+        if (!req.body.authorizationToken || !req.body.authorizationToken.startsWith('Bearer') || !req.body.authorizationToken.split(' ')[2]) {
+            return res.status(422).json({
+                message: "Please provide the token",
+            });
+        }
+        const theToken = req.body.authorizationToken.split(' ')[2];
+        jwt.verify(theToken, process.env.JwtTokenSecretKey, (err) => {
+            if(err){
+                throw("Invalid JWT token " + err)
+            }
+        });
+
         var title = req.body.title;
         var dueDate = req.body.dueDate;
         var attachment = req.body.attachment;
-        var userId = req.body.userId;
+        const userId = req.body.authorizationToken.split(' ')[1];
 
         sql = `INSERT INTO nodedb.tasks (Title, DueDate, Attachment, UserId) VALUES ("${title}" , "${dueDate}" , "${attachment}" , ${userId})`;
         db.query(sql, function (err, doc) {
@@ -58,7 +88,7 @@ router.post('/createTask', (req, res) => {
     catch (err) {
         res.status(500).send({
             success: false,
-            error: genericError,
+            error: JSON.stringify(err, undefined, 2),
         })
     }
 });
@@ -67,6 +97,18 @@ router.post('/createTask', (req, res) => {
 // URL -> localhost:3000/tasks/updateTask
 router.put('/updateTask', (req, res) => {
     try {
+        if (!req.body.authorizationToken || !req.body.authorizationToken.startsWith('Bearer') || !req.body.authorizationToken.split(' ')[2]) {
+            return res.status(422).json({
+                message: "Please provide the token",
+            });
+        }
+        const theToken = req.body.authorizationToken.split(' ')[2];
+        jwt.verify(theToken, process.env.JwtTokenSecretKey, (err) => {
+            if(err){
+                throw("Invalid JWT token " + err)
+            }
+        });
+
         var taskId = req.body.id;
         var title = req.body.title;
 
@@ -88,6 +130,18 @@ router.put('/updateTask', (req, res) => {
 // URL -> localhost:3000/tasks/deleteTask
 router.delete('/deleteTask', (req, res) => {
     try {
+        if (!req.body.authorizationToken || !req.body.authorizationToken.startsWith('Bearer') || !req.body.authorizationToken.split(' ')[2]) {
+            return res.status(422).json({
+                message: "Please provide the token",
+            });
+        }
+        const theToken = req.body.authorizationToken.split(' ')[2];
+        jwt.verify(theToken, process.env.JwtTokenSecretKey, (err) => {
+            if(err){
+                throw("Invalid JWT token " + err)
+            }
+        });
+
         var taskId = req.body.id;
         sql = `DELETE FROM nodedb.tasks WHERE id = "${taskId}"`;
         db.query(sql, (err, doc) => {
@@ -98,7 +152,7 @@ router.delete('/deleteTask', (req, res) => {
     catch (err) {
         res.status(500).send({
             success: false,
-            error: JSON.stringify(err, undefined, 2),
+            error: JSON.stringify(err, undefined, 2)
         })
     }
 });

@@ -4,6 +4,10 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../utils/db.js');
+const dotenv = require('dotenv');
+
+//Configure dotenv files above using any other library and files
+dotenv.config({path:'./utils/config.env'}); 
 
 var router = express.Router();
 
@@ -75,48 +79,50 @@ router.post('/registerUser', (req, res) => {
     }
 });
 
-//  user login
+// user login
 // URL -> localhost:3000/users/login
-router.get('/login', async (req, res) => {
-    try {
-        var email = req.body.email;
-        var password = req.body.password;
-
-        // Send a message to user if all the required information in not provided
-        if (!email || !password) {
-            return res.json({ message: 'Please enter email and password' })
-        }
-
-        // check if a user exists for given email id
-        var getUserSql = `SELECT * FROM nodedb.Users WHERE email = "${email}"`;
-        db.query(getUserSql, function (err, result, field) {
-
-            if (result.length === 0) {
-                res.send({ message: "No user exists for email id: " + email })
-            }
-            else {
-                // when user exists for given email id
-                var sql = `SELECT * FROM nodedb.Users WHERE email = "${email}" AND password = "${password}"`;
-                db.query(sql, function (err, doc) {
-                    if (doc.length === 0) {
-                        // user exists in database but incorrect password
-                        res.send({ message: "Incorrect password entered" })
-                    }
-                    else {
-                        // email and password both match with a user record in database
-                        res.send({ message: "User Logged-in" })
-                    }
+router.post('/login', (req, res, next) => {
+    var UserId;
+    db.query(
+        `SELECT * FROM users WHERE email = ${db.escape(req.body.email)};`,
+        (err, result) => {
+            // user does not exists
+            if (err) {
+                return res.status(400).send({
+                    message: err
                 });
             }
-        })
-    }
-    catch(err)
-    {
-        res.status(500).send({
-            success: false,
-            error: JSON.stringify(err, undefined, 2)
-        })
-    }
+            if (!result.length) {
+                return res.status(401).send({
+                    message: 'Email or password is incorrect!'
+                });
+            }
+            // check password
+            bcrypt.compare( req.body.password, result[0]['Password'], (bErr, bResult) => {                
+                UserId = result[0]['ID'];
+                console.log(UserId);
+                    // wrong password
+                    if (bErr) {
+                        return res.status(401).send({
+                            message: 'Email or password is incorrect!'
+                        });
+                    }
+                    if (bResult) {
+                        
+                        const token = jwt.sign({ id: result[0].id }, process.env.JwtTokenSecretKey, { expiresIn: '1d' });
+                        return res.status(200).send({
+                            message: 'Logged in!',
+                            token : 'Bearer' + ' ' + UserId + ' ' + token,
+                            user: result[0]
+                        });
+                    }
+                    return res.status(401).send({
+                        message: 'Username or password is incorrect!'
+                    });
+                }
+            );
+        }
+    );
 });
 
 

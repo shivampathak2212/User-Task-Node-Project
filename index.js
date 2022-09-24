@@ -8,7 +8,7 @@ const dotenv = require('dotenv');
 const db = require('./utils/db.js');
 
 //Configure dotenv files above using any other library and files
-dotenv.config({path:'./utils/config.env'}); 
+dotenv.config({ path: './utils/config.env' });
 
 // Request statement for the controller we want to use
 var usersController = require('./controllers/usersController');
@@ -19,10 +19,10 @@ db.connect((err) => {
     if (err) {
         console.log(err);
     }
-    else{
+    else {
         console.log("MySql Connected");
     }
-  });
+});
 
 // To work with express we need to call the express package, the result will be saved in the "app" variable here.
 var app = express();
@@ -35,3 +35,58 @@ app.listen(3000, () => console.log("Server started at port: 3000"));
 
 app.use('/users', usersController);
 app.use('/tasks', tasksController);
+
+app.get("/createdb", (req, res) => {
+    try {
+        let sql = `CREATE DATABASE nodedb`;
+        db.query(sql, (err) => {
+            if (err) {
+                throw (err);
+            }
+            res.send("Database created");
+        });
+    }
+    catch (err) {
+        console.log(err);
+    }
+});
+
+// Create users table
+app.get("/usertable", (req, res) => {
+    try {
+        let sql = "CREATE TABLE nodedb.Users (ID int, Name varchar(255), Email varchar(255), Password varchar(255))";
+
+        db.query(sql, (err) => {
+            if (err) {
+                throw (err);
+            }
+            res.send("Users table created");
+        });
+    }
+    catch (err) {
+        res.status(500).send({
+            success: false,
+            error: JSON.stringify(err, undefined, 2)
+        })
+    }
+});
+
+// Create tasks table
+app.get("/tasktable", (req, res) => {
+    try {
+        let sql = "create table nodedb.tasks ( Id int NOT NULL AUTO_INCREMENT PRIMARY KEY, Title varchar(250), DueDate DATE, Attachment varchar(250), UserId int NOT NULL )";
+
+        db.query(sql, (err) => {
+            if (err) {
+                throw(err);
+            }
+            res.send("Tasks table created");
+        });
+    }
+    catch (err) {
+        res.status(500).send({
+            success: false,
+            error: JSON.stringify(err, undefined, 2)
+        })
+    }
+});
